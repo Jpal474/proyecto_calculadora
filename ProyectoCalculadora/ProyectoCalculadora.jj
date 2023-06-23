@@ -1,0 +1,262 @@
+options { Ignore_Case = false; }
+
+PARSER_BEGIN(ProyectoCalculadora)
+
+public class ProyectoCalculadora {
+    static TablaSimbolos TS = new TablaSimbolos();
+    public static void main(String args[]) throws ParseException {
+        ProyectoCalculadora parser = new ProyectoCalculadora(System.in);
+        parser.Entrada();
+    }
+
+static int may(int a, int b) {return a>b?a:b;} //Para identificar el tipo de variable
+
+static Tipo amp(int t, Tipo tip ){ 
+    Tipo n = new Tipo();
+        
+    if(t==0){
+        if(tip.id==0){
+            n.vari = (int) tip.getvari();
+              
+        }
+        else{
+            n.vari = (int) tip.getvard();
+               
+        }n.id = 0;
+    }else{
+        if(tip.id==0){
+            n.vard = (double) tip.getvari();
+        }else{
+            n.vard = (double) tip.getvard();
+        }n.id=1;
+    }
+    return n; 
+
+}
+}
+PARSER_END(ProyectoCalculadora)
+SKIP :
+{ 
+    " " 
+    | "\t" 
+    | "\n" 
+    | "\r" 
+}
+TOKEN :
+{
+    <SUMA: "+"> 
+    |<RESTA: "-"> 
+    |<MULTIPLICACION: "*">
+    | <DIVISION: "/">
+    | <PARIZQ: "(">
+    | <PARDER: ")">
+    | <IGUAL: "=">
+    | <COMA: ",">
+    | <PCOMA: ";">
+    | <PRINT: "Evaluar">
+    | <ENTERO: "int"|"Integrer">
+    | <DOBLE: "double">
+    | <NUMINT: (<NUM>)+>
+    | <NUMDOUBLE: <NUMINT>"."<NUMINT>>
+    | <ETIQ: <IDENTIFICADOR> (<IDENTIFICADOR> | <NUMINT> | "_"){0,9}>
+    | <IDENTIFICADOR: (["A"-"Z"] | ["a"-"z"])>
+    | <NUM: ["0"-"9"]>
+    | <CORIZQ: "[">
+    | <CORDER: "]">
+}
+
+void Entrada() ://metodo para llamar al metodo declaracion o asignacion
+{}  
+{ (Declarar()|Reasignacion()|IMPRESION())+  <EOF> }
+
+void IMPRESION():{Tipo res;}
+{  
+    <PRINT><CORIZQ>res=E(){
+
+        if(res.getid()==0)   {
+            System.out.print("El resultado es "+res.getvari()+"\n");
+        }
+        else{
+            System.out.print("El resultado es "+res.getvard()+"\n");
+        }
+    }
+    <CORDER><PCOMA>
+    
+}
+
+void Declarar():{int tipo; String nom; Tipo t1= new Tipo(0); Tipo t2;} //Detectamos las declaraciones ej: int a=9;
+{
+    (tipo=INT(){t1= new Tipo(0);}|tipo=DOUBLE(){t1= new Tipo(0.0d);})nom=IDEN(){ //Tipo de dato e inicializacion
+        TS.insertar(nom,t1);}
+    (t1=Asignar() // metodo en el que asigna un valor 
+    {
+        t2=amp(tipo,t1); 
+        TS.cambiar(nom,t2); 
+    }
+    ((<COMA> nom=IDEN(){TS.insertar(nom,t1);} 
+    (t1=Asignar() {t2=amp(tipo,t1); TS.cambiar(nom,t2);})?)+)?
+
+    |(<COMA> nom=IDEN(){TS.insertar(nom,t1);}
+        (t1=Asignar() {t2=amp(tipo,t1); TS.cambiar(nom,t2);})?
+    )+        
+    )? <PCOMA>
+}
+Tipo Asignar():{Tipo t; } //asignacion cuando se presente el a = 4 *2
+{
+    <IGUAL> t=E() { 
+           return t;}
+} 
+
+void Reasignacion():{int tipo; Tipo t1,t2; String nom; Simbolo sim;} //Reasignacion cuando hay una nueva asignacion a una variable establecida
+{
+    nom=IDEN(){sim=TS.buscar(nom);} t1=Asignar() <PCOMA>{  tipo=sim.var.id; t2=amp(tipo,t1); TS.cambiar(nom,t2);} 
+}
+String IDEN():
+{
+  Token ide; String s;  
+}
+{  
+    ide=<ETIQ> {s=String.valueOf(ide.image); return s;} 
+}
+int INT():{}
+{
+    <ENTERO>
+    {return 0;}
+}
+int DOUBLE():{} 
+{
+    <DOBLE>
+    {return 1;}
+}
+Tipo E():
+{Tipo val,sin;} 
+{ 
+    (val=T() sin=Ep(val))
+    { 
+            val=sin;
+        return val; 
+       } 
+}
+
+Tipo Ep(Tipo her) : 
+{Tipo val,sin,x,y;
+int tipo;} 
+{ 
+    [(<SUMA>val=T() 
+    {tipo=may(her.getid(),val.getid()); 
+    x=amp(tipo,her); 
+    y=amp(tipo,val); 
+    if(tipo==0){
+        int op1=x.vari;
+        x.vari+=y.vari;
+    }else{
+        double op4=x.vard;    
+        x.vard+=y.vard;
+    }
+    
+} sin=Ep(x){return sin;})| 
+    (<RESTA>val=T() 
+    {tipo=may(her.getid(),val.getid()); 
+        x=amp(tipo,her); 
+        y=amp(tipo,val); 
+        if(tipo==0){
+            int op1=x.vari;
+            x.vari-=y.vari;
+        } 
+        else{
+            double op4=x.vard;    
+            x.vard-=y.vard;
+        } 
+    } sin=Ep(x) {return sin;}) 
+    {System.out.println("her: " + her + ", val: " + val +", sin: " + sin);
+    }]
+    {
+        return her; 
+    }
+} 
+Tipo T() :
+{
+Tipo val,sin; 
+}
+{
+val=F() sin=Tp(val)
+{ 
+    val=sin; 
+ return val; 
+}
+}
+Tipo Tp(Tipo her) :
+{
+Tipo val,sin,x,y; 
+int tipo;}
+{
+[(<MULTIPLICACION> val=F() 
+{tipo=may(her.getid(),val.getid()); 
+    x=amp(tipo,her);
+    y=amp(tipo,val);
+        if(tipo==0){
+            int op1=x.vari;
+            x.vari*=y.vari;
+        }
+        else{
+            double op4=x.vard;    
+            x.vard*=y.vard;
+        }
+    } sin=Tp(x){return sin;})| 
+(<DIVISION> val=F(){ 
+    tipo=may(her.getid(),val.getid()); 
+    x=amp(tipo,her);
+    y=amp(tipo,val);
+    if(tipo==0){
+        int op1=x.vari;
+        x.vari/=y.vari;
+    }else{
+        double op4=x.vard;    
+        x.vard/=y.vard;
+    }
+}  sin=Tp(x){return sin;})
+{System.out.println("her: " + her + ", val: " + val +", sin: " + sin);
+}]
+{
+return her; 
+}
+}
+Tipo F():
+{
+Tipo val; 
+}
+{
+   
+(val=NUM()|<PARIZQ>val=E()<PARDER>) {
+}
+{   
+return val;
+}
+}
+Tipo NUM(): //metodo para obtener el valor en la entrada
+{
+
+Token valex; 
+Tipo val; 
+String s;
+Simbolo sim;
+}
+{   
+valex=<NUMINT> 
+{
+val = new Tipo(Integer.valueOf(valex.image)); 
+return val; 
+}
+|valex=<NUMDOUBLE> 
+{
+val = new Tipo(Double.valueOf(valex.image)); 
+return val; 
+}
+|valex=<ETIQ> 
+{
+s=String.valueOf(valex.image);  
+sim=TS.buscar(s);  
+val= sim.var;  
+return val;
+}
+}
